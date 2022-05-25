@@ -17,7 +17,7 @@ var getUnixTime = func() int64 {
 
 var (
 	ErrKeyNotFound     = errors.New("key not found")
-	ErrVersionMisMatch = errors.New("version mismatch")
+	ErrInvalidFormat = errors.New("invalid format")
 )
 
 type (
@@ -80,7 +80,7 @@ func New(path string) (*DB, error) {
 	}
 	h := *((*header)(unsafe.Pointer(&buf[0])))
 	if h.version != formatVersion {
-		return nil, ErrVersionMisMatch
+		return nil, ErrInvalidFormat
 	}
 
 	d := make(map[string]*metadata)

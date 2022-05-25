@@ -21,11 +21,6 @@ var (
 	port   int    = 9888
 )
 
-var (
-	responseOK    = []byte("+OK\r\n")
-	responseError = []byte("-Error message\r\n")
-)
-
 func main() {
 	flag.StringVar(&dbpath, "path", dbpath, fmt.Sprintf("default: %s", dbpath))
 	flag.IntVar(&port, "port", port, fmt.Sprintf("default: %d", port))
