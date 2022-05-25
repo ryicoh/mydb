@@ -16,7 +16,7 @@ var getUnixTime = func() int64 {
 }
 
 var (
-	ErrKeyNotFound     = errors.New("key not found")
+	ErrKeyNotFound   = errors.New("key not found")
 	ErrInvalidFormat = errors.New("invalid format")
 )
 
