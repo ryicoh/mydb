@@ -127,6 +127,17 @@ func handleRequest(conn net.Conn, logger *log.Logger, db *mydb.DB) error {
 			} else {
 				res = append(res, append([]byte("+"), value...))
 			}
+		case bytes.EqualFold(cmd[0], []byte("DEL")):
+			err := db.Delete(cmd[1])
+			if err != nil {
+				if errors.Is(err, mydb.ErrKeyNotFound) {
+					res = append(res, []byte("-Key not found"))
+				} else {
+					return err
+				}
+			} else {
+				res = append(res, []byte("+OK"))
+			}
 		default:
 			res = append(res, []byte(fmt.Sprintf("-unsupport command `%s`", string(cmd[0]))))
 		}
