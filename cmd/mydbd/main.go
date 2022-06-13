@@ -28,7 +28,7 @@ var (
 func main() {
 	flag.StringVar(&dbpath, "path", dbpath, fmt.Sprintf("default: %s", dbpath))
 	flag.IntVar(&port, "port", port, fmt.Sprintf("default: %d", port))
-	flag.BoolVar(&infologEnabled, "infolog", infologEnabled, fmt.Sprintf("default: %d", infologEnabled))
+	flag.BoolVar(&infologEnabled, "infolog", infologEnabled, fmt.Sprintf("default: %v", infologEnabled))
 	flag.Parse()
 
 	err := run()
@@ -51,15 +51,15 @@ func run() error {
 	}
 	defer listener.Close()
 
-	stop := make(chan os.Signal)
-  signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
-  go func() {
-    <-stop
-    listener.Close()
-    db.Close()
-    os.Exit(1)
-  }()
+	go func() {
+		<-stop
+		listener.Close()
+		db.Close()
+		os.Exit(1)
+	}()
 
 	for {
 		requestID := fmt.Sprintf("%d: ", rand.Int31())
