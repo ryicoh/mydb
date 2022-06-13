@@ -1,7 +1,11 @@
 package mydb
 
 import (
+	"bytes"
+	"crypto/rand"
+	"encoding/gob"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -219,4 +223,113 @@ func TestNewFromExistingFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	expectToBe(t, [][]byte{[]byte("value1"), []byte("value2")}, values)
+}
+
+type Pair struct {
+	Key   []byte
+	Value []byte
+}
+
+const datasetPath = "datasetpath"
+const num = 1000
+
+func init() {
+	dataset := newDataset(num)
+	saveDataset(datasetPath, dataset)
+}
+
+func BenchmarkPut(b *testing.B) {
+	path := "data/bench_put.db"
+	os.RemoveAll(path)
+
+	db, err := New(path)
+	if err != nil {
+		panic(err)
+	}
+
+	dataset := restoreDataset(datasetPath)
+
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		for i := 0; i < num; i++ {
+			err := db.Put(dataset[i].Key, dataset[i].Value)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+
+}
+
+func BenchmarkGet(b *testing.B) {
+	path := "data/bench_put.db"
+
+	db, err := New(path)
+	if err != nil {
+		panic(err)
+	}
+
+	dataset := restoreDataset(datasetPath)
+
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		for i := 0; i < num; i++ {
+			value, err := db.Get(dataset[i].Key)
+			if err != nil {
+				panic(err)
+			}
+			if !bytes.Equal(value, dataset[i].Value) {
+				panic(fmt.Errorf("expect: %s, but got %s", dataset[i].Value, value))
+			}
+		}
+	}
+}
+
+func genRandByteArray(n int) []byte {
+	bytes := make([]byte, n)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		panic(err)
+	}
+	return bytes
+}
+
+func newDataset(num int) []Pair {
+	dataset := make([]Pair, num)
+	for i := 0; i < num; i++ {
+		dataset[i] = Pair{
+			Key:   genRandByteArray(30),
+			Value: genRandByteArray(100),
+		}
+	}
+	return dataset
+}
+
+func saveDataset(path string, pairs []Pair) {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	err = gob.NewEncoder(file).Encode(pairs)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func restoreDataset(path string) []Pair {
+	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	var pairs []Pair
+	err = gob.NewDecoder(file).Decode(&pairs)
+	if err != nil {
+		panic(err)
+	}
+
+	return pairs
 }

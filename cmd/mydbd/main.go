@@ -6,10 +6,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 
 	"log"
 
@@ -17,13 +20,15 @@ import (
 )
 
 var (
-	dbpath string = "./my.db"
-	port   int    = 9888
+	dbpath         string = "./my.db"
+	port           int    = 9888
+	infologEnabled bool   = true
 )
 
 func main() {
 	flag.StringVar(&dbpath, "path", dbpath, fmt.Sprintf("default: %s", dbpath))
 	flag.IntVar(&port, "port", port, fmt.Sprintf("default: %d", port))
+	flag.BoolVar(&infologEnabled, "infolog", infologEnabled, fmt.Sprintf("default: %d", infologEnabled))
 	flag.Parse()
 
 	err := run()
@@ -46,6 +51,16 @@ func run() error {
 	}
 	defer listener.Close()
 
+	stop := make(chan os.Signal)
+  signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+  go func() {
+    <-stop
+    listener.Close()
+    db.Close()
+    os.Exit(1)
+  }()
+
 	for {
 		requestID := fmt.Sprintf("%d: ", rand.Int31())
 		infolog := log.New(os.Stdout, "INFO  ", log.Ldate|log.Ltime|log.Lshortfile|log.LUTC|log.Lmsgprefix)
@@ -57,6 +72,10 @@ func run() error {
 		if err != nil {
 			errorlog.Println(err)
 			continue
+		}
+
+		if !infologEnabled {
+			infolog.SetOutput(io.Discard)
 		}
 
 		go func() {

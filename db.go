@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"sync"
 	"time"
 	"unsafe"
 )
@@ -23,6 +24,7 @@ var (
 type (
 	DB struct {
 		file   *os.File
+		mu     sync.Mutex
 		d      map[string]*metadata
 		size   int64
 		cursor int64
@@ -127,6 +129,9 @@ func (d *DB) Close() error {
 }
 
 func (d *DB) Put(key, value []byte) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	meta := &metadata{
 		offset:    d.cursor,
 		keySize:   len(key),
@@ -149,6 +154,9 @@ func (d *DB) Put(key, value []byte) error {
 }
 
 func (d *DB) Get(key []byte) ([]byte, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	meta, ok := d.d[string(key)]
 	if !ok || meta.deleted != 0 {
 		return nil, ErrKeyNotFound
@@ -165,6 +173,9 @@ func (d *DB) Get(key []byte) ([]byte, error) {
 }
 
 func (d *DB) Delete(key []byte) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	keyStr := string(key)
 	meta, ok := d.d[keyStr]
 	if !ok || meta.deleted != 0 {
@@ -182,6 +193,9 @@ func (d *DB) Delete(key []byte) error {
 }
 
 func (d *DB) GetAll() ([][]byte, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	values := make([][]byte, 0, len(d.d))
 	for _, meta := range d.d {
 		if meta.deleted != 0 {
